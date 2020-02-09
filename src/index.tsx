@@ -24,6 +24,7 @@ const App = () => {
   return (
     <div
       style={{
+        fontFamily: "'Noto Serif', serif",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
