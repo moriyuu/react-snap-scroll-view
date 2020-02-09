@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
 import ReactDOM from "react-dom";
+import iNoBounce from "inobounce";
 
 import { SnapScrollView } from "./SnapScrollView";
 
@@ -21,6 +22,10 @@ const Item: React.FC<{ style?: any }> = props => {
 };
 
 const App = () => {
+  useEffect(() => {
+    iNoBounce.enable();
+  }, []);
+
   return (
     <div
       style={{
