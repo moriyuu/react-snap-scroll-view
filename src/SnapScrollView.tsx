@@ -18,36 +18,39 @@ type Props = {
 };
 type State = {
   isGrabbing: boolean;
-  scrollStartPointX: number;
+  grabStartPointX: number;
   offset: number;
-  lastTranslateX: number;
-  initialTranslateX: number;
+  lastInnerTranslateX: number;
+  baseTranslateX: number;
   itemsGroupElementWidth: number;
-  scrollingContainerElementWidth: number;
+  snapScrollViewElementWidth: number;
   currentFocusedItemIndex: number;
   itemElementWidths: number[];
+  scrollVelocity: number; // px/msec
+  lastMovedAt: number;
 };
 
 export const SnapScrollView: React.FC<Props> = props => {
   const [state, setState] = useState<State>({
     isGrabbing: false,
-    scrollStartPointX: 0,
+    grabStartPointX: 0,
     offset: 0,
-    lastTranslateX: 0,
-    initialTranslateX: 0,
+    lastInnerTranslateX: 0,
+    baseTranslateX: 0,
     itemsGroupElementWidth: 0,
-    scrollingContainerElementWidth: 0,
+    snapScrollViewElementWidth: 0,
     currentFocusedItemIndex: 0,
-    itemElementWidths: []
+    itemElementWidths: [],
+    scrollVelocity: 0,
+    lastMovedAt: 0
   });
 
-  const scrollingContainerRef = useRef<HTMLDivElement>(null);
+  const snapScrollViewRef = useRef<HTMLDivElement>(null);
   const itemsGroupRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const scrollingContainerElement = scrollingContainerRef.current;
-    const scrollingContainerElementWidth =
-      scrollingContainerElement?.clientWidth || 0;
+    const snapScrollViewElement = snapScrollViewRef.current;
+    const snapScrollViewElementWidth = snapScrollViewElement?.clientWidth || 0;
     const itemsGroupElement = itemsGroupRef.current;
     const itemsGroupElementWidth = itemsGroupElement?.clientWidth || 0;
     const itemElements = Array.from(
@@ -57,38 +60,45 @@ export const SnapScrollView: React.FC<Props> = props => {
       itemElement => itemElement.clientWidth || 0
     );
 
-    const translateX = getTranslateXWhenItemIsInCenter(props.items.length, {
-      itemElementWidths,
-      scrollingContainerElementWidth
-    });
+    const baseTranslateX = -itemsGroupElementWidth;
+    const innerTranslateX = getInnerTranslateXWhenItemIsInCenter(
+      props.items.length,
+      {
+        itemElementWidths,
+        snapScrollViewElementWidth,
+        baseTranslateX
+      }
+    );
 
     setState(_state => ({
       ..._state,
       itemsGroupElementWidth,
-      scrollingContainerElementWidth,
+      snapScrollViewElementWidth,
       itemElementWidths,
-      lastTranslateX: translateX,
-      initialTranslateX: translateX
+      lastInnerTranslateX: innerTranslateX,
+      baseTranslateX
     }));
   }, []);
 
   useEffect(() => {
     const { currentFocusedItemIndex } = getFocusedItemIndex(
-      state.lastTranslateX
+      state.lastInnerTranslateX
     );
     setState(_state => ({ ..._state, currentFocusedItemIndex }));
-  }, [state.lastTranslateX]);
+  }, [state.lastInnerTranslateX]);
 
   // Returns translateX when item with commonIndex is centered
-  const getTranslateXWhenItemIsInCenter = useCallback(
+  const getInnerTranslateXWhenItemIsInCenter = useCallback(
     (
       itemCommonIndex: number,
       config: {
         itemElementWidths: State["itemElementWidths"];
-        scrollingContainerElementWidth: State["scrollingContainerElementWidth"];
+        snapScrollViewElementWidth: State["snapScrollViewElementWidth"];
+        baseTranslateX: State["baseTranslateX"];
       } = {
         itemElementWidths: state.itemElementWidths,
-        scrollingContainerElementWidth: state.scrollingContainerElementWidth
+        snapScrollViewElementWidth: state.snapScrollViewElementWidth,
+        baseTranslateX: state.baseTranslateX
       }
     ) => {
       let prevItemsWidth = 0;
@@ -104,7 +114,8 @@ export const SnapScrollView: React.FC<Props> = props => {
       // This defines snapToAlignment
       const translateX = -(
         prevItemsWidth -
-        config.scrollingContainerElementWidth / 2
+        config.snapScrollViewElementWidth / 2 +
+        config.baseTranslateX
       );
       return translateX;
     },
@@ -112,50 +123,48 @@ export const SnapScrollView: React.FC<Props> = props => {
       props.items,
       props.itemMarginHorizontalPx,
       state.itemElementWidths,
-      state.scrollingContainerElementWidth
+      state.snapScrollViewElementWidth,
+      state.baseTranslateX
     ]
   );
 
   const snapTo = useCallback(
     async (commonIndex: number) => {
-      const translateX = getTranslateXWhenItemIsInCenter(commonIndex);
-      if (translateX === state.lastTranslateX && state.offset === 0) return;
+      const innerTranslateX = getInnerTranslateXWhenItemIsInCenter(commonIndex);
+      if (innerTranslateX === state.lastInnerTranslateX && state.offset === 0) {
+        return;
+      }
       setState(_state => ({
         ..._state,
-        lastTranslateX: translateX,
+        lastInnerTranslateX: innerTranslateX,
         offset: 0,
         isGrabbing: false
       }));
       await sleep(transitionDuration);
-      setState(_state => ({ ..._state, isGrabbing: true }));
-      const lastTranslateX = jumpToCenterGroup(translateX);
-      setState(_state => ({ ..._state, lastTranslateX }));
-      await sleep(100);
-      setState(_state => ({ ..._state, isGrabbing: false }));
-    },
-    [state.lastTranslateX, state.offset]
-  );
 
-  // Reset to center item group
-  const jumpToCenterGroup = useCallback(
-    (tmpLastTranslateX: number): number => {
-      let lastTranslateX = tmpLastTranslateX;
-      if (
-        lastTranslateX <
-        state.initialTranslateX - state.itemsGroupElementWidth
-      ) {
-        lastTranslateX = lastTranslateX + state.itemsGroupElementWidth;
-      } else if (lastTranslateX >= -state.itemsGroupElementWidth) {
-        lastTranslateX = lastTranslateX - state.itemsGroupElementWidth;
+      const { commonIndex: focusedItemCommonIndex } = getFocusedItemIndex(
+        innerTranslateX
+      );
+      const focusedItemItemGroupIndex = Math.floor(
+        focusedItemCommonIndex / props.items.length
+      );
+
+      // Reset to center item group
+      if (focusedItemItemGroupIndex !== 1) {
+        const diff = 1 - focusedItemItemGroupIndex;
+        setState(_state => ({
+          ..._state,
+          baseTranslateX:
+            _state.baseTranslateX - diff * _state.itemsGroupElementWidth
+        }));
       }
-      return lastTranslateX;
     },
-    [state.initialTranslateX, state.itemsGroupElementWidth]
+    [props.items, state.lastInnerTranslateX, state.offset, state.baseTranslateX]
   );
 
   const getFocusedItemIndex = useCallback(
     (translateX: number) => {
-      let hand = -state.scrollingContainerElementWidth / 2;
+      let hand = -state.snapScrollViewElementWidth / 2 + state.baseTranslateX;
       let currentFocusedItemIndex = 0;
       let commonIndex = 0;
       // `3000` は計算すれば必要十分な数字出るのでは？
@@ -179,8 +188,9 @@ export const SnapScrollView: React.FC<Props> = props => {
     [
       props.items,
       props.itemMarginHorizontalPx,
-      state.scrollingContainerElementWidth,
-      state.itemElementWidths
+      state.snapScrollViewElementWidth,
+      state.itemElementWidths,
+      state.baseTranslateX
     ]
   );
 
@@ -189,9 +199,13 @@ export const SnapScrollView: React.FC<Props> = props => {
       event.persist();
 
       if (state.isGrabbing) {
-        const offset =
-          state.scrollStartPointX - event.changedTouches[0].clientX;
-        let translateX = state.lastTranslateX - offset;
+        const offset = state.grabStartPointX - event.changedTouches[0].clientX;
+
+        let momentumDistance = 0;
+        for (let i = 0; i < 300; i++) {
+          momentumDistance += state.scrollVelocity * 0.98 ** i;
+        }
+        let translateX = state.lastInnerTranslateX - offset + momentumDistance;
         const { commonIndex } = getFocusedItemIndex(translateX);
         snapTo(commonIndex);
       }
@@ -203,84 +217,100 @@ export const SnapScrollView: React.FC<Props> = props => {
     (event: TouchEvent<HTMLDivElement>) => {
       event.persist();
 
-      let scrollStartPointX = state.scrollStartPointX;
+      let grabStartPointX = state.grabStartPointX;
 
-      // handle grab start
+      // grab start
       if (!state.isGrabbing) {
-        scrollStartPointX = event.changedTouches[0].clientX;
+        grabStartPointX = event.changedTouches[0].clientX;
         setState(_state => ({
           ..._state,
           isGrabbing: true,
-          scrollStartPointX
+          grabStartPointX
         }));
       }
 
-      const offset = scrollStartPointX - event.changedTouches[0].clientX;
-      setState(_state => ({ ..._state, offset }));
+      const offset = grabStartPointX - event.changedTouches[0].clientX;
+      const now = new Date().getTime();
+      setState(_state => {
+        const time = now - _state.lastMovedAt;
+        const scrollVelocity = (_state.offset - offset) / time;
+        return { ..._state, offset, scrollVelocity, lastMovedAt: now };
+      });
     },
-    [state.scrollStartPointX, state.isGrabbing]
+    [state.grabStartPointX, state.isGrabbing]
   );
 
   return (
-    <StyledSnapScrollView
-      ref={scrollingContainerRef}
-      onTouchEnd={handleTouchEnd}
-      onTouchMove={handleTouchMove}
-      //   onMouseDown={handleMouseDown}
-      //   onMouseUp={handleMouseUp}
-      //   onMouseMove={handleMouseMove}
-    >
-      <div
-        className="inner"
-        style={{
-          transform: `translate3d(${state.lastTranslateX -
-            state.offset}px, 0px, 0px)`,
-          transitionDuration: state.isGrabbing
-            ? "0s"
-            : `${transitionDuration}ms`
-        }}
+    <>
+      <div>V={state.scrollVelocity}</div>
+      <StyledSnapScrollView
+        ref={snapScrollViewRef}
+        onTouchEnd={handleTouchEnd}
+        onTouchMove={handleTouchMove}
+        //   onMouseDown={handleMouseDown}
+        //   onMouseUp={handleMouseUp}
+        //   onMouseMove={handleMouseMove}
       >
-        <div className="items-group" ref={itemsGroupRef}>
-          <Items
-            items={props.items}
-            itemMarginHorizontalPx={props.itemMarginHorizontalPx}
-            snapTo={snapTo}
-            groupIndex={0}
-          />
+        <div
+          className="base"
+          style={{
+            transform: `translate3d(${state.baseTranslateX}px, 0px, 0px)`
+          }}
+        >
+          <div
+            className="inner"
+            style={{
+              transform: `translate3d(${state.lastInnerTranslateX -
+                state.offset}px, 0px, 0px)`,
+              transitionDuration: state.isGrabbing
+                ? "0s"
+                : `${transitionDuration}ms`
+            }}
+          >
+            <div className="items-group" ref={itemsGroupRef}>
+              <Items
+                items={props.items}
+                itemMarginHorizontalPx={props.itemMarginHorizontalPx}
+                snapTo={snapTo}
+                groupIndex={0}
+              />
+            </div>
+            <div className="items-group">
+              <Items
+                items={props.items}
+                itemMarginHorizontalPx={props.itemMarginHorizontalPx}
+                snapTo={snapTo}
+                groupIndex={1}
+              />
+            </div>
+            <div className="items-group">
+              <Items
+                items={props.items}
+                itemMarginHorizontalPx={props.itemMarginHorizontalPx}
+                snapTo={snapTo}
+                groupIndex={2}
+              />
+            </div>
+          </div>
         </div>
-        <div className="items-group">
-          <Items
-            items={props.items}
-            itemMarginHorizontalPx={props.itemMarginHorizontalPx}
-            snapTo={snapTo}
-            groupIndex={1}
-            // onClick={() => snapTo(8)}
-          />
-        </div>
-        <div className="items-group">
-          <Items
-            items={props.items}
-            itemMarginHorizontalPx={props.itemMarginHorizontalPx}
-            snapTo={snapTo}
-            groupIndex={2}
-          />
-        </div>
-      </div>
-    </StyledSnapScrollView>
+      </StyledSnapScrollView>
+    </>
   );
 };
 const StyledSnapScrollView = styled.div`
   overflow: hidden;
 
-  > .inner {
-    display: flex;
-    align-items: center;
-    height: 100%;
-
-    > .items-group {
+  > .base {
+    > .inner {
       display: flex;
       align-items: center;
       height: 100%;
+
+      > .items-group {
+        display: flex;
+        align-items: center;
+        height: 100%;
+      }
     }
   }
 `;
@@ -302,6 +332,7 @@ const Items: React.FC<{
             style={{ margin: `0 ${props.itemMarginHorizontalPx}px` }}
             onClick={() => props.snapTo(commonIndex)}
           >
+            i: {commonIndex}
             {item}
           </div>
         );

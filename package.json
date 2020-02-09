@@ -5,7 +5,9 @@
   "license": "MIT",
   "scripts": {
     "dev": "parcel src/index.html",
-    "build": "parcel build src/index.html"
+    "build": "parcel build src/index.html",
+    "deploy": "netlify deploy --dir=dist --prod",
+    "bnd": "yarn build && yarn deploy"
   },
   "dependencies": {
     "inobounce": "^0.2.0",
