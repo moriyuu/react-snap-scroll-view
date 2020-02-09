@@ -204,6 +204,8 @@ export const SnapScrollView: React.FC<Props> = props => {
       event.persist();
 
       let scrollStartPointX = state.scrollStartPointX;
+
+      // handle grab start
       if (!state.isGrabbing) {
         scrollStartPointX = event.changedTouches[0].clientX;
         setState(_state => ({
