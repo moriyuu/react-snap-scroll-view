@@ -31,9 +31,9 @@ const App = () => {
         height: "100vh"
       }}
     >
-      <h1 style={{ marginTop: "-120px" }}>react-snap-scrolling</h1>
-      <a href="https://github.com/moriyuu/react-snap-scrolling">
-        moriyuu/react-snap-scrolling
+      <h1 style={{ marginTop: "-120px" }}>react-snap-scroll-view</h1>
+      <a href="https://github.com/moriyuu/react-snap-scroll-view">
+        moriyuu/react-snap-scroll-view
       </a>
       <div
         style={{
