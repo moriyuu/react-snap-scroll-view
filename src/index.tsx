@@ -4,14 +4,28 @@ import iNoBounce from "inobounce";
 
 import { SnapScrollView } from "./SnapScrollView";
 
-const Item: React.FC<{ color: string; style?: any }> = props => {
+const items: {
+  color: string;
+  width: string;
+}[] = [
+  { color: "#B04349", width: "80px" },
+  { color: "#E9662F", width: "80px" },
+  { color: "#FD951F", width: "80px" },
+  { color: "#8193B6", width: "80px" },
+  { color: "#003366", width: "80px" },
+  { color: "#FFF6ED", width: "80px" },
+  { color: "#00D7B6", width: "80px" },
+  { color: "#F15869", width: "80px" }
+];
+
+const Item: React.FC<{ style?: Object }> = props => {
   return (
     <div
       style={{
         height: "80px",
         lineHeight: "80px",
         width: "80px",
-        backgroundColor: props.color || "#cfcfcf",
+        backgroundColor: "#cfcfcf",
         textAlign: "center",
         ...props.style
       }}
@@ -38,7 +52,9 @@ const App = () => {
         backgroundColor: "#eee"
       }}
     >
-      <h1 style={{ marginTop: "-120px" }}>react-snap-scroll-view</h1>
+      <h1 style={{ marginTop: "-120px", letterSpacing: "0.001em" }}>
+        react-snap-scroll-view
+      </h1>
       <a href="https://github.com/moriyuu/react-snap-scroll-view">
         moriyuu/react-snap-scroll-view
       </a>
@@ -47,22 +63,14 @@ const App = () => {
           backgroundColor: "rgba(0,0,0,0.8)",
           padding: "16px 0",
           position: "absolute",
-          // bottom: "16px",
           bottom: 0,
           width: "100vw"
         }}
       >
         <SnapScrollView
-          items={[
-            <Item color="#B04349" />,
-            <Item color="#E9662F" />,
-            <Item color="#FD951F" style={{ width: "120px" }} />,
-            <Item color="#8193B6" />,
-            <Item color="#003366" style={{ width: "100px" }} />,
-            <Item color="#FFF6ED" style={{ width: "40px" }} />,
-            <Item color="#00D7B6" />,
-            <Item color="#F15869" />
-          ]}
+          items={items.map(item => (
+            <Item style={{ backgroundColor: item.color, width: item.width }} />
+          ))}
           itemMarginHorizontalPx={16}
           snapToAlignment="center"
         />
