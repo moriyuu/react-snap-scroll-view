@@ -268,10 +268,7 @@ export const SnapScrollingContainer: React.FC<Props> = props => {
   );
 };
 const StyledSnapScrollingContainer = styled.div`
-  background-color: #eee;
   overflow: hidden;
-
-  height: 160px;
 
   > .inner {
     display: flex;

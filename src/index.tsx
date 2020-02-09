@@ -3,15 +3,14 @@ import ReactDOM from "react-dom";
 
 import { SnapScrollingContainer } from "./SnapScrolling";
 
-const ScrollingItem: React.FC<{ style?: any }> = props => {
+const Item: React.FC<{ style?: any }> = props => {
   return (
     <div
       style={{
-        height: "140px",
-        lineHeight: "140px",
-        width: "140px",
-        minWidth: "140px",
-        backgroundColor: "#cacaca",
+        height: "80px",
+        lineHeight: "80px",
+        width: "80px",
+        backgroundColor: "#cfcfcf",
         textAlign: "center",
         ...props.style
       }}
@@ -23,19 +22,43 @@ const ScrollingItem: React.FC<{ style?: any }> = props => {
 
 const App = () => {
   return (
-    <>
-      <h1>react-snap-scrolling</h1>
-      <SnapScrollingContainer
-        items={[
-          <ScrollingItem>0</ScrollingItem>,
-          <ScrollingItem>1</ScrollingItem>,
-          <ScrollingItem style={{ width: "200px" }}>2</ScrollingItem>,
-          <ScrollingItem>3</ScrollingItem>
-        ]}
-        itemMarginHorizontalPx={16}
-        snapToAlignment="center"
-      />
-    </>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexDirection: "column",
+        height: "100vh"
+      }}
+    >
+      <h1 style={{ marginTop: "-120px" }}>react-snap-scrolling</h1>
+      <a href="https://github.com/moriyuu/react-snap-scrolling">
+        moriyuu/react-snap-scrolling
+      </a>
+      <div
+        style={{
+          backgroundColor: "#efefef",
+          padding: "16px 0",
+          position: "absolute",
+          bottom: "16px",
+          width: "100vw"
+        }}
+      >
+        <SnapScrollingContainer
+          items={[
+            <Item>0</Item>,
+            <Item>1</Item>,
+            <Item style={{ width: "120px" }}>2</Item>,
+            <Item>3</Item>,
+            <Item style={{ width: "100px" }}>4</Item>,
+            <Item style={{ width: "40px" }}>5</Item>,
+            <Item>6</Item>
+          ]}
+          itemMarginHorizontalPx={16}
+          snapToAlignment="center"
+        />
+      </div>
+    </div>
   );
 };
 
