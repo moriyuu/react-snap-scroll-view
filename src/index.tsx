@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom";
 
-import { SnapScrollingContainer } from "./SnapScrolling";
+import { SnapScrollView } from "./SnapScrollView";
 
 const Item: React.FC<{ style?: any }> = props => {
   return (
@@ -44,7 +44,7 @@ const App = () => {
           width: "100vw"
         }}
       >
-        <SnapScrollingContainer
+        <SnapScrollView
           items={[
             <Item>0</Item>,
             <Item>1</Item>,

@@ -28,7 +28,7 @@ type State = {
   itemElementWidths: number[];
 };
 
-export const SnapScrollingContainer: React.FC<Props> = props => {
+export const SnapScrollView: React.FC<Props> = props => {
   const [state, setState] = useState<State>({
     isGrabbing: false,
     scrollStartPointX: 0,
@@ -220,7 +220,7 @@ export const SnapScrollingContainer: React.FC<Props> = props => {
   );
 
   return (
-    <StyledSnapScrollingContainer
+    <StyledSnapScrollView
       ref={scrollingContainerRef}
       onTouchEnd={handleTouchEnd}
       onTouchMove={handleTouchMove}
@@ -264,10 +264,10 @@ export const SnapScrollingContainer: React.FC<Props> = props => {
           />
         </div>
       </div>
-    </StyledSnapScrollingContainer>
+    </StyledSnapScrollView>
   );
 };
-const StyledSnapScrollingContainer = styled.div`
+const StyledSnapScrollView = styled.div`
   overflow: hidden;
 
   > .inner {
