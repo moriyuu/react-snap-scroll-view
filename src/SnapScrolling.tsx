@@ -9,6 +9,10 @@ import React, {
 } from "react";
 import styled from "styled-components";
 
+const sleep = async (ms: number) => new Promise(res => setTimeout(res, ms));
+
+const transitionDuration = 300;
+
 type Option = {
   infinity: boolean;
   onSnap(): void;
@@ -63,7 +67,7 @@ export const SnapScrollingContainer: React.FC<Props> = props => {
       itemElement => itemElement.clientWidth || 0
     );
 
-    const translateX = getTranslateXOnCentered(props.items.length, {
+    const translateX = getTranslateXWhenItemIsInCenter(props.items.length, {
       itemElementWidths,
       scrollingContainerElementWidth
     });
@@ -82,24 +86,12 @@ export const SnapScrollingContainer: React.FC<Props> = props => {
     const currentFocusedItemIndex = getCurrentFocusedItemIndex(
       state.lastTranslateX
     );
-    setState(_state => ({
-      ..._state,
-      currentFocusedItemIndex
-    }));
+    setState(_state => ({ ..._state, currentFocusedItemIndex }));
   }, [state.lastTranslateX]);
 
-  // useEffect(() => {
-  //   if (state.offset === 0) {
-  //     setState(_state => ({
-  //       ..._state,
-  //       idGrabbing: false
-  //     }));
-  //   }
-  // }, [state.offset]);
-
-  // commonIndex の item が中央にくる場合の translateX を返す
-  const getTranslateXOnCentered = (
-    commonIndex: number,
+  // Returns translateX when item with commonIndex is centered
+  const getTranslateXWhenItemIsInCenter = (
+    itemCommonIndex: number,
     config: {
       itemElementWidths: State["itemElementWidths"];
       scrollingContainerElementWidth: State["scrollingContainerElementWidth"];
@@ -108,17 +100,15 @@ export const SnapScrollingContainer: React.FC<Props> = props => {
       scrollingContainerElementWidth: state.scrollingContainerElementWidth
     }
   ) => {
-    // TODO: 次 snapTo() method を作りたい
-
     let prevItemsWidth = 0;
     prevItemsWidth += props.itemMarginHorizontalPx;
-    for (let i = 0; i < commonIndex; i++) {
+    for (let i = 0; i < itemCommonIndex; i++) {
       const targetItemIndex = i % props.items.length;
       prevItemsWidth += config.itemElementWidths[targetItemIndex];
       prevItemsWidth += props.itemMarginHorizontalPx * 2;
     }
     prevItemsWidth +=
-      config.itemElementWidths[commonIndex % props.items.length] / 2;
+      config.itemElementWidths[itemCommonIndex % props.items.length] / 2;
 
     // This defines snapToAlignment
     const translateX = -(
@@ -128,13 +118,15 @@ export const SnapScrollingContainer: React.FC<Props> = props => {
     return translateX;
   };
 
-  const snapTo = (commonIndex: number) => {
-    const translateX = getTranslateXOnCentered(commonIndex);
+  const snapTo = async (commonIndex: number) => {
+    const translateX = getTranslateXWhenItemIsInCenter(commonIndex);
     setState(_state => ({ ..._state, lastTranslateX: translateX }));
-    setTimeout(() => {
-      const lastTranslateX = jumpToCenterGroup(translateX);
-      setState(_state => ({ ..._state, lastTranslateX }));
-    }, 300);
+    await sleep(transitionDuration);
+    setState(_state => ({ ..._state, idGrabbing: true }));
+    const lastTranslateX = jumpToCenterGroup(translateX);
+    setState(_state => ({ ..._state, lastTranslateX }));
+    await sleep(100);
+    setState(_state => ({ ..._state, idGrabbing: false }));
   };
 
   // Reset to center item group
@@ -151,7 +143,6 @@ export const SnapScrollingContainer: React.FC<Props> = props => {
     return lastTranslateX;
   };
 
-  // ok
   const getCurrentFocusedItemIndex = (translateX: number) => {
     let hand = -state.scrollingContainerElementWidth / 2;
     let currentFocusedItemIndex = 0;
@@ -173,15 +164,7 @@ export const SnapScrollingContainer: React.FC<Props> = props => {
     return currentFocusedItemIndex;
   };
 
-  const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
-    event.persist();
-    setState(_state => ({
-      ..._state,
-      idGrabbing: true,
-      scrollStartPointX: event.changedTouches[0].clientX
-    }));
-  };
-  const handleTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
+  const handleTouchEnd = async (event: TouchEvent<HTMLDivElement>) => {
     event.persist();
     const offset = state.scrollStartPointX - event.changedTouches[0].clientX;
     let tmpLastTranslateX = state.lastTranslateX - offset;
@@ -192,69 +175,72 @@ export const SnapScrollingContainer: React.FC<Props> = props => {
       lastTranslateX,
       offset: 0
     }));
-
-    setTimeout(() => {
-      setState(_state => ({ ..._state, idGrabbing: false }));
-    }, 100);
+    await sleep(100);
+    setState(_state => ({ ..._state, idGrabbing: false }));
   };
   const handleTouchMove = (event: TouchEvent<HTMLDivElement>) => {
     event.persist();
-    const offset = state.scrollStartPointX - event.changedTouches[0].clientX;
+
+    let scrollStartPointX = state.scrollStartPointX;
+    if (!state.idGrabbing) {
+      scrollStartPointX = event.changedTouches[0].clientX;
+      setState(_state => ({
+        ..._state,
+        idGrabbing: true,
+        scrollStartPointX
+      }));
+    }
+
+    const offset = scrollStartPointX - event.changedTouches[0].clientX;
     setState(_state => ({ ..._state, offset }));
   };
 
   return (
-    <>
-      <StyledSnapScrollingContainer
-        ref={scrollingContainerRef}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        onTouchMove={handleTouchMove}
-        //   onMouseDown={handleMouseDown}
-        //   onMouseUp={handleMouseUp}
-        //   onMouseMove={handleMouseMove}
+    <StyledSnapScrollingContainer
+      ref={scrollingContainerRef}
+      onTouchEnd={handleTouchEnd}
+      onTouchMove={handleTouchMove}
+      //   onMouseDown={handleMouseDown}
+      //   onMouseUp={handleMouseUp}
+      //   onMouseMove={handleMouseMove}
+    >
+      <div
+        className="inner"
+        style={{
+          transform: `translate3d(${state.lastTranslateX -
+            state.offset}px, 0px, 0px)`,
+          transitionDuration: state.idGrabbing
+            ? "0s"
+            : `${transitionDuration}ms`
+        }}
       >
-        <div
-          className="inner"
-          style={{
-            transform: `translate3d(${state.lastTranslateX -
-              state.offset}px, 0px, 0px)`,
-            transitionDuration: state.idGrabbing ? "0s" : "0.3s"
-          }}
-        >
-          <div className="items-group" ref={itemsGroupRef}>
-            <Items
-              items={props.items}
-              itemMarginHorizontalPx={props.itemMarginHorizontalPx}
-              groupIndex={0}
-            />
-          </div>
-          <div className="items-group">
-            <Items
-              items={props.items}
-              itemMarginHorizontalPx={props.itemMarginHorizontalPx}
-              groupIndex={1}
-            />
-          </div>
-          <div className="items-group">
-            <Items
-              items={props.items}
-              itemMarginHorizontalPx={props.itemMarginHorizontalPx}
-              groupIndex={2}
-            />
-          </div>
+        <div className="items-group" ref={itemsGroupRef}>
+          <Items
+            items={props.items}
+            itemMarginHorizontalPx={props.itemMarginHorizontalPx}
+            snapTo={snapTo}
+            groupIndex={0}
+          />
         </div>
-      </StyledSnapScrollingContainer>
-
-      <button onClick={() => snapTo(0)}>0</button>
-      <button onClick={() => snapTo(1)}>1</button>
-      <button onClick={() => snapTo(2)}>2</button>
-      <button onClick={() => snapTo(3)}>3</button>
-      <button onClick={() => snapTo(8)}>8</button>
-      <button onClick={() => snapTo(9)}>9</button>
-      <button onClick={() => snapTo(10)}>10</button>
-      <button onClick={() => snapTo(11)}>11</button>
-    </>
+        <div className="items-group">
+          <Items
+            items={props.items}
+            itemMarginHorizontalPx={props.itemMarginHorizontalPx}
+            snapTo={snapTo}
+            groupIndex={1}
+            // onClick={() => snapTo(8)}
+          />
+        </div>
+        <div className="items-group">
+          <Items
+            items={props.items}
+            itemMarginHorizontalPx={props.itemMarginHorizontalPx}
+            snapTo={snapTo}
+            groupIndex={2}
+          />
+        </div>
+      </div>
+    </StyledSnapScrollingContainer>
   );
 };
 const StyledSnapScrollingContainer = styled.div`
@@ -279,23 +265,28 @@ const StyledSnapScrollingContainer = styled.div`
 const Items: React.FC<{
   items: React.ReactElement[];
   itemMarginHorizontalPx: number;
+  snapTo(commonIndex: number): Promise<void>;
   groupIndex: number;
 }> = props => {
   return (
     <>
-      {props.items.map((item, index) => (
-        <div
-          key={item.key}
-          className="item"
-          style={{ margin: `0 ${props.itemMarginHorizontalPx}px` }}
-          onClick={() => {
-            console.log("index", index + props.groupIndex * props.items.length);
-          }}
-        >
-          <div>i: {index + props.groupIndex * props.items.length}</div>
-          {item}
-        </div>
-      ))}
+      {props.items.map((item, index) => {
+        const commonIndex = index + props.groupIndex * props.items.length;
+        return (
+          <div
+            key={item.key}
+            className="item"
+            style={{ margin: `0 ${props.itemMarginHorizontalPx}px` }}
+            onClick={event => {
+              event.persist();
+              props.snapTo(commonIndex);
+            }}
+          >
+            <div>i: {commonIndex}</div>
+            {item}
+          </div>
+        );
+      })}
     </>
   );
 };

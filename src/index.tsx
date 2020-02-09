@@ -27,14 +27,15 @@ const App = () => {
       <h1>react-snap-scrolling</h1>
       <SnapScrollingContainer
         items={[
+          <ScrollingItem key={0}>0</ScrollingItem>,
           <ScrollingItem key={1}>1</ScrollingItem>,
           <ScrollingItem key={2} style={{ width: "200px" }}>
             2
           </ScrollingItem>,
-          <ScrollingItem key={3}>3</ScrollingItem>,
-          <ScrollingItem key={4}>4</ScrollingItem>
+          <ScrollingItem key={3}>3</ScrollingItem>
         ]}
         itemMarginHorizontalPx={16}
+        snapToAlignment="center"
       />
     </>
   );
