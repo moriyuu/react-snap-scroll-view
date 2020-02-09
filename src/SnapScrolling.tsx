@@ -2,10 +2,8 @@ import React, {
   useState,
   useEffect,
   useCallback,
-  useMemo,
   useRef,
-  TouchEvent,
-  MouseEvent
+  TouchEvent
 } from "react";
 import styled from "styled-components";
 
@@ -82,114 +80,144 @@ export const SnapScrollingContainer: React.FC<Props> = props => {
   }, [state.lastTranslateX]);
 
   // Returns translateX when item with commonIndex is centered
-  const getTranslateXWhenItemIsInCenter = (
-    itemCommonIndex: number,
-    config: {
-      itemElementWidths: State["itemElementWidths"];
-      scrollingContainerElementWidth: State["scrollingContainerElementWidth"];
-    } = {
-      itemElementWidths: state.itemElementWidths,
-      scrollingContainerElementWidth: state.scrollingContainerElementWidth
-    }
-  ) => {
-    let prevItemsWidth = 0;
-    prevItemsWidth += props.itemMarginHorizontalPx;
-    for (let i = 0; i < itemCommonIndex; i++) {
-      const targetItemIndex = i % props.items.length;
-      prevItemsWidth += config.itemElementWidths[targetItemIndex];
-      prevItemsWidth += props.itemMarginHorizontalPx * 2;
-    }
-    prevItemsWidth +=
-      config.itemElementWidths[itemCommonIndex % props.items.length] / 2;
-
-    // This defines snapToAlignment
-    const translateX = -(
-      prevItemsWidth -
-      config.scrollingContainerElementWidth / 2
-    );
-    return translateX;
-  };
-
-  const snapTo = async (commonIndex: number) => {
-    const translateX = getTranslateXWhenItemIsInCenter(commonIndex);
-    if (translateX === state.lastTranslateX && state.offset === 0) return;
-    setState(_state => ({
-      ..._state,
-      lastTranslateX: translateX,
-      offset: 0,
-      isGrabbing: false
-    }));
-    await sleep(transitionDuration);
-    setState(_state => ({ ..._state, isGrabbing: true }));
-    const lastTranslateX = jumpToCenterGroup(translateX);
-    setState(_state => ({ ..._state, lastTranslateX }));
-    await sleep(100);
-    setState(_state => ({ ..._state, isGrabbing: false }));
-  };
-
-  // Reset to center item group
-  const jumpToCenterGroup = (tmpLastTranslateX: number): number => {
-    let lastTranslateX = tmpLastTranslateX;
-    if (
-      lastTranslateX <
-      state.initialTranslateX - state.itemsGroupElementWidth
-    ) {
-      lastTranslateX = lastTranslateX + state.itemsGroupElementWidth;
-    } else if (lastTranslateX >= -state.itemsGroupElementWidth) {
-      lastTranslateX = lastTranslateX - state.itemsGroupElementWidth;
-    }
-    return lastTranslateX;
-  };
-
-  const getFocusedItemIndex = (translateX: number) => {
-    let hand = -state.scrollingContainerElementWidth / 2;
-    let currentFocusedItemIndex = 0;
-    let commonIndex = 0;
-    // `3000` は計算すれば必要十分な数字出るのでは？
-    for (let i = 0; i < 3000; i++) {
-      const targetItemIndex = i % props.items.length;
-      const min = hand;
-      const rangeWidth =
-        state.itemElementWidths[targetItemIndex] +
-        props.itemMarginHorizontalPx * 2;
-      const max = hand + rangeWidth;
-
-      if (min <= -translateX && -translateX <= max) {
-        currentFocusedItemIndex = targetItemIndex;
-        commonIndex = i;
-        break;
+  const getTranslateXWhenItemIsInCenter = useCallback(
+    (
+      itemCommonIndex: number,
+      config: {
+        itemElementWidths: State["itemElementWidths"];
+        scrollingContainerElementWidth: State["scrollingContainerElementWidth"];
+      } = {
+        itemElementWidths: state.itemElementWidths,
+        scrollingContainerElementWidth: state.scrollingContainerElementWidth
       }
-      hand += rangeWidth;
-    }
-    return { currentFocusedItemIndex, commonIndex };
-  };
+    ) => {
+      let prevItemsWidth = 0;
+      prevItemsWidth += props.itemMarginHorizontalPx;
+      for (let i = 0; i < itemCommonIndex; i++) {
+        const targetItemIndex = i % props.items.length;
+        prevItemsWidth += config.itemElementWidths[targetItemIndex];
+        prevItemsWidth += props.itemMarginHorizontalPx * 2;
+      }
+      prevItemsWidth +=
+        config.itemElementWidths[itemCommonIndex % props.items.length] / 2;
 
-  const handleTouchEnd = async (event: TouchEvent<HTMLDivElement>) => {
-    event.persist();
+      // This defines snapToAlignment
+      const translateX = -(
+        prevItemsWidth -
+        config.scrollingContainerElementWidth / 2
+      );
+      return translateX;
+    },
+    [
+      props.items,
+      props.itemMarginHorizontalPx,
+      state.itemElementWidths,
+      state.scrollingContainerElementWidth
+    ]
+  );
 
-    if (state.isGrabbing) {
-      const offset = state.scrollStartPointX - event.changedTouches[0].clientX;
-      let translateX = state.lastTranslateX - offset;
-      const { commonIndex } = getFocusedItemIndex(translateX);
-      snapTo(commonIndex);
-    }
-  };
-  const handleTouchMove = (event: TouchEvent<HTMLDivElement>) => {
-    event.persist();
-
-    let scrollStartPointX = state.scrollStartPointX;
-    if (!state.isGrabbing) {
-      scrollStartPointX = event.changedTouches[0].clientX;
+  const snapTo = useCallback(
+    async (commonIndex: number) => {
+      const translateX = getTranslateXWhenItemIsInCenter(commonIndex);
+      if (translateX === state.lastTranslateX && state.offset === 0) return;
       setState(_state => ({
         ..._state,
-        isGrabbing: true,
-        scrollStartPointX
+        lastTranslateX: translateX,
+        offset: 0,
+        isGrabbing: false
       }));
-    }
+      await sleep(transitionDuration);
+      setState(_state => ({ ..._state, isGrabbing: true }));
+      const lastTranslateX = jumpToCenterGroup(translateX);
+      setState(_state => ({ ..._state, lastTranslateX }));
+      await sleep(100);
+      setState(_state => ({ ..._state, isGrabbing: false }));
+    },
+    [state.lastTranslateX, state.offset]
+  );
 
-    const offset = scrollStartPointX - event.changedTouches[0].clientX;
-    setState(_state => ({ ..._state, offset }));
-  };
+  // Reset to center item group
+  const jumpToCenterGroup = useCallback(
+    (tmpLastTranslateX: number): number => {
+      let lastTranslateX = tmpLastTranslateX;
+      if (
+        lastTranslateX <
+        state.initialTranslateX - state.itemsGroupElementWidth
+      ) {
+        lastTranslateX = lastTranslateX + state.itemsGroupElementWidth;
+      } else if (lastTranslateX >= -state.itemsGroupElementWidth) {
+        lastTranslateX = lastTranslateX - state.itemsGroupElementWidth;
+      }
+      return lastTranslateX;
+    },
+    [state.initialTranslateX, state.itemsGroupElementWidth]
+  );
+
+  const getFocusedItemIndex = useCallback(
+    (translateX: number) => {
+      let hand = -state.scrollingContainerElementWidth / 2;
+      let currentFocusedItemIndex = 0;
+      let commonIndex = 0;
+      // `3000` は計算すれば必要十分な数字出るのでは？
+      for (let i = 0; i < 3000; i++) {
+        const targetItemIndex = i % props.items.length;
+        const min = hand;
+        const rangeWidth =
+          state.itemElementWidths[targetItemIndex] +
+          props.itemMarginHorizontalPx * 2;
+        const max = hand + rangeWidth;
+
+        if (min <= -translateX && -translateX <= max) {
+          currentFocusedItemIndex = targetItemIndex;
+          commonIndex = i;
+          break;
+        }
+        hand += rangeWidth;
+      }
+      return { currentFocusedItemIndex, commonIndex };
+    },
+    [
+      props.items,
+      props.itemMarginHorizontalPx,
+      state.scrollingContainerElementWidth,
+      state.itemElementWidths
+    ]
+  );
+
+  const handleTouchEnd = useCallback(
+    (event: TouchEvent<HTMLDivElement>) => {
+      event.persist();
+
+      if (state.isGrabbing) {
+        const offset =
+          state.scrollStartPointX - event.changedTouches[0].clientX;
+        let translateX = state.lastTranslateX - offset;
+        const { commonIndex } = getFocusedItemIndex(translateX);
+        snapTo(commonIndex);
+      }
+    },
+    [state]
+  );
+
+  const handleTouchMove = useCallback(
+    (event: TouchEvent<HTMLDivElement>) => {
+      event.persist();
+
+      let scrollStartPointX = state.scrollStartPointX;
+      if (!state.isGrabbing) {
+        scrollStartPointX = event.changedTouches[0].clientX;
+        setState(_state => ({
+          ..._state,
+          isGrabbing: true,
+          scrollStartPointX
+        }));
+      }
+
+      const offset = scrollStartPointX - event.changedTouches[0].clientX;
+      setState(_state => ({ ..._state, offset }));
+    },
+    [state.scrollStartPointX, state.isGrabbing]
+  );
 
   return (
     <StyledSnapScrollingContainer
