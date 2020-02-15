@@ -23,6 +23,7 @@ type Props = {
   items: React.ReactElement[];
   itemMarginHorizontalPx: number;
   snapToAlignment: "center";
+  onSnap({ focusedIndex }: { focusedIndex: number }): void;
 };
 ```
 
