@@ -21,9 +21,10 @@ Demo: https://react-snap-scroll-view.netlify.com/
 ```ts
 type Props = {
   items: React.ReactElement[];
-  itemMarginHorizontalPx: number;
-  snapToAlignment: "center";
-  onSnap({ focusedIndex }: { focusedIndex: number }): void;
+  itemMarginPx: number;
+  snapToAlignment?: "center";
+  direction?: "horizontal" | "vertical";
+  onSnap?({ focusedIndex }: { focusedIndex: number }): void;
 };
 ```
 
