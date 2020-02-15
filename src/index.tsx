@@ -9,13 +9,13 @@ const items: {
   width: string;
 }[] = [
   { color: "#B04349", width: "80px" },
-  { color: "#E9662F", width: "80px" },
+  { color: "#E9662F", width: "120px" },
   { color: "#FD951F", width: "80px" },
-  { color: "#8193B6", width: "80px" },
+  { color: "#8193B6", width: "120px" },
   { color: "#003366", width: "80px" },
-  { color: "#FFF6ED", width: "80px" },
-  { color: "#00D7B6", width: "80px" },
-  { color: "#F15869", width: "80px" }
+  { color: "#FFF6ED", width: "100px" },
+  { color: "#00D7B6", width: "180px" },
+  { color: "#F15869", width: "100px" }
 ];
 
 const Item: React.FC<{ style?: Object }> = props => {
