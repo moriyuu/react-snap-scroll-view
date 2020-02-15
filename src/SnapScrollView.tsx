@@ -13,6 +13,7 @@ type Props = {
   items: React.ReactElement[];
   itemMarginHorizontalPx: number;
   snapToAlignment: "center";
+  onSnap({ focusedIndex }: { focusedIndex: number }): void;
 };
 type State = {
   isGrabbing: boolean;
@@ -201,8 +202,11 @@ export const SnapScrollView: React.FC<Props> = props => {
           momentumDistance += state.scrollVelocity * 0.98 ** i;
         }
         let translateX = state.lastInnerTranslateX - offset + momentumDistance;
-        const { commonIndex } = getFocusedItemIndex(translateX);
+        const { commonIndex, currentFocusedItemIndex } = getFocusedItemIndex(
+          translateX
+        );
         snapTo(commonIndex);
+        props.onSnap({ focusedIndex: currentFocusedItemIndex });
       }
     },
     [state]

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 import iNoBounce from "inobounce";
 
@@ -27,6 +27,7 @@ const Item: React.FC<{ style?: Object }> = props => {
         width: "80px",
         backgroundColor: "#cfcfcf",
         textAlign: "center",
+        color: "#222",
         ...props.style
       }}
     >
@@ -39,6 +40,12 @@ const App = () => {
   useEffect(() => {
     iNoBounce.enable();
   }, []);
+
+  const [focusedIndex, setFocusedIndex] = useState(1);
+
+  const onSnap = ({ focusedIndex }: { focusedIndex: number }) => {
+    setFocusedIndex(focusedIndex);
+  };
 
   return (
     <div
@@ -60,20 +67,36 @@ const App = () => {
       </a>
       <div
         style={{
-          backgroundColor: "rgba(0,0,0,0.8)",
-          padding: "16px 0",
           position: "absolute",
           bottom: 0,
           width: "100vw"
         }}
       >
-        <SnapScrollView
-          items={items.map(item => (
-            <Item style={{ backgroundColor: item.color, width: item.width }} />
-          ))}
-          itemMarginHorizontalPx={16}
-          snapToAlignment="center"
-        />
+        <div
+          style={{
+            textAlign: "center",
+            marginBottom: "16px"
+          }}
+        >
+          Focused: {focusedIndex}
+        </div>
+        <div
+          style={{
+            backgroundColor: "rgba(0,0,0,0.8)",
+            padding: "16px 0"
+          }}
+        >
+          <SnapScrollView
+            items={items.map((item, index) => (
+              <Item style={{ backgroundColor: item.color, width: item.width }}>
+                {index}
+              </Item>
+            ))}
+            itemMarginHorizontalPx={16}
+            snapToAlignment="center"
+            onSnap={onSnap}
+          />
+        </div>
       </div>
     </div>
   );
