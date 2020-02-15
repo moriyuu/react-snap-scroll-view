@@ -12,8 +12,8 @@ const transitionDuration = 300;
 type Props = {
   items: React.ReactElement[];
   itemMarginHorizontalPx: number;
-  snapToAlignment: "center";
-  onSnap({ focusedIndex }: { focusedIndex: number }): void;
+  snapToAlignment?: "center";
+  onSnap?({ focusedIndex }: { focusedIndex: number }): void;
 };
 type State = {
   isGrabbing: boolean;
@@ -206,7 +206,10 @@ export const SnapScrollView: React.FC<Props> = props => {
           translateX
         );
         snapTo(commonIndex);
-        props.onSnap({ focusedIndex: currentFocusedItemIndex });
+
+        if (props.onSnap) {
+          props.onSnap({ focusedIndex: currentFocusedItemIndex });
+        }
       }
     },
     [state]
