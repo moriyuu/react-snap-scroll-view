@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "parcel example/index.html",
-    "build": "parcel build example/index.html",
+    "build": "parcel build example/index.html && cp example/_redirects dist",
     "deploy": "netlify deploy --dir=dist --prod",
     "bnd": "yarn build && yarn deploy"
   },
